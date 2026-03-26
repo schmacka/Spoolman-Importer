@@ -2,6 +2,8 @@
 
 export SPOOLMAN_URL=$(bashio::config 'spoolman_url')
 export ANTHROPIC_API_KEY=$(bashio::config 'anthropic_api_key' '')
+export OPENROUTER_API_KEY=$(bashio::config 'openrouter_api_key' '')
+export OPENROUTER_MODEL=$(bashio::config 'openrouter_model' 'anthropic/claude-haiku-4-5')
 export SPOOLMAN_API_KEY=$(bashio::config 'spoolman_api_key' '')
 
 bashio::log.info "Starting Filament Analyzer"
