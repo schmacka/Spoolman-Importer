@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review Spool — Filament Analyzer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    body { padding-bottom: 3rem; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(200px, 1fr) 2fr;
+      gap: 2rem;
+      align-items: start;
+      margin-top: 1.5rem;
+    }
+    @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+
+    .spool-image img { width: 100%; border-radius: 8px; }
+    .badge {
+      margin-top: 0.6rem; padding: 0.5rem 0.75rem;
+      border-radius: 6px; font-size: 0.82rem; line-height: 1.4;
+      background: var(--pico-card-background-color);
+      border: 1px solid var(--pico-muted-border-color);
+    }
+    .badge.db-match { border-color: #22c55e; color: #86efac; }
+    .badge.barcode   { border-color: #60a5fa; color: #93c5fd; }
+
+    details { margin-bottom: 1rem; }
+    details summary { font-weight: 600; cursor: pointer; padding: 0.4rem 0; }
+    details[open] summary { margin-bottom: 0.75rem; }
+
+    .color-row { display: flex; gap: 0.75rem; align-items: center; }
+    .color-swatch {
+      width: 2.5rem; height: 2.5rem; border-radius: 6px;
+      border: 2px solid var(--pico-muted-border-color);
+      flex-shrink: 0;
+    }
+    .color-row input[type="text"] { flex: 1; font-family: monospace; }
+
+    .form-actions { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; }
+    .reuse-box {
+      background: rgba(34,197,94,0.08);
+      border: 1px solid #22c55e;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+    fieldset { border: none; padding: 0; margin: 0; }
+  </style>
+</head>
+<body>
+  <main class="container" style="max-width: 960px">
+    <nav>
+      <ul><li><strong>Filament Analyzer</strong></li></ul>
+      <ul><li><a href="/">← Start over</a></li></ul>
+    </nav>
+
+    <div class="layout">
+      <!-- Left column: image + badges -->
+      <aside class="spool-image">
+        <img src="data:{{ image_mime }};base64,{{ image_b64 }}" alt="Uploaded spool photo">
+
+        {% if barcode %}
+        <div class="badge barcode">🔲 Barcode detected:<br><code>{{ barcode }}</code></div>
+        {% endif %}
+
+        {% if db_match %}
+        <div class="badge db-match">
+          ✓ SpoolmanDB match<br>
+          <strong>{{ db_match.vendor_name }}</strong> — {{ db_match.name }}
+        </div>
+        {% endif %}
+      </aside>
+
+      <!-- Right column: review form -->
+      <section>
+        <h2 style="margin-top:0">Review &amp; Edit</h2>
+        <p style="color:var(--pico-muted-color); font-size:0.9rem">
+          Check the extracted details below, correct any mistakes, then click <strong>Add to Spoolman</strong>.
+        </p>
+
+        <form method="post" action="/create">
+
+          <!-- ── Vendor ─────────────────────────────────────────────── -->
+          <details open>
+            <summary>Vendor / Brand</summary>
+
+            {% if existing_vendors %}
+            <div class="reuse-box">
+              <fieldset>
+                <label>
+                  <input type="radio" name="vendor_mode" value="existing"
+                         id="vmode-existing" checked>
+                  Reuse <strong>{{ existing_vendors[0].name }}</strong>
+                  <small style="color:var(--pico-muted-color)">(already in Spoolman)</small>
+                </label>
+                <label>
+                  <input type="radio" name="vendor_mode" value="new" id="vmode-new">
+                  Create new vendor
+                </label>
+              </fieldset>
+            </div>
+            <input type="hidden" name="vendor_id" id="vendor-id-field"
+                   value="{{ existing_vendors[0].id }}">
+            {% endif %}
+
+            <div id="vendor-name-wrap"{% if existing_vendors %} style="display:none"{% endif %}>
+              <label>
+                Vendor name
+                <input type="text" name="vendor_name"
+                       id="vendor-name-input"
+                       value="{{ data.vendor or '' }}"
+                       placeholder="e.g. Bambu Lab"
+                       {% if existing_vendors %}disabled{% endif %}>
+              </label>
+            </div>
+          </details>
+
+          <!-- ── Filament ───────────────────────────────────────────── -->
+          <details open>
+            <summary>Filament</summary>
+
+            {% if existing_filaments %}
+            <div class="reuse-box">
+              <fieldset>
+                <label>
+                  <input type="radio" name="filament_mode" value="existing"
+                         id="fmode-existing" checked>
+                  Reuse <strong>{{ existing_filaments[0].name }}</strong>
+                  <small style="color:var(--pico-muted-color)">(already in Spoolman)</small>
+                </label>
+                <label>
+                  <input type="radio" name="filament_mode" value="new" id="fmode-new">
+                  Create new filament
+                </label>
+              </fieldset>
+            </div>
+            <input type="hidden" name="filament_id" id="filament-id-field"
+                   value="{{ existing_filaments[0].id }}">
+            {% endif %}
+
+            <div id="filament-fields-wrap"{% if existing_filaments %} style="display:none"{% endif %}>
+              <div class="grid">
+                <label>
+                  Name
+                  <input type="text" name="filament_name"
+                         value="{{ ((data.color_name or '') + ' ' + (data.material or '')) | trim }}"
+                         placeholder="e.g. Bambu PLA Basic Black">
+                </label>
+                <label>
+                  Material
+                  <input type="text" name="material"
+                         value="{{ data.material or '' }}" placeholder="PLA">
+                </label>
+              </div>
+
+              <label>Color name
+                <input type="text" name="color_name"
+                       value="{{ data.color_name or '' }}" placeholder="e.g. Jet Black">
+              </label>
+
+              <label>Color
+                <div class="color-row">
+                  <div class="color-swatch" id="color-swatch"
+                       style="background:#{{ data.color_hex or 'ffffff' }}"></div>
+                  <input type="color" id="color-picker"
+                         value="#{{ data.color_hex or 'ffffff' }}"
+                         title="Pick color" style="width:3rem; height:2.5rem; padding:0.1rem; cursor:pointer">
+                  <input type="text" name="color_hex" id="color-hex-text"
+                         value="{{ data.color_hex or '' }}"
+                         placeholder="RRGGBB" maxlength="7"
+                         style="text-transform:uppercase; font-family:monospace">
+                </div>
+              </label>
+
+              <div class="grid">
+                <label>Density (g/cm³)
+                  <input type="number" name="density" step="0.01" min="0.5" max="3"
+                         value="{{ data.density or '1.24' }}">
+                </label>
+                <label>Diameter (mm)
+                  <input type="number" name="diameter" step="0.05" min="1" max="4"
+                         value="{{ data.diameter_mm or '1.75' }}">
+                </label>
+              </div>
+
+              <div class="grid">
+                <label>Weight (g)
+                  <input type="number" name="weight" min="0"
+                         value="{{ data.weight_g or '' }}" placeholder="1000">
+                </label>
+                <label>Spool weight (g)
+                  <input type="number" name="spool_weight" min="0"
+                         value="{{ data.spool_weight or '' }}" placeholder="250">
+                </label>
+              </div>
+
+              <div class="grid">
+                <label>Extruder temp min (°C)
+                  <input type="number" name="temp_min" min="0" max="400"
+                         value="{{ data.temp_min or '' }}" placeholder="190">
+                </label>
+                <label>Extruder temp max (°C)
+                  <input type="number" name="temp_max" min="0" max="400"
+                         value="{{ data.temp_max or '' }}" placeholder="230">
+                </label>
+              </div>
+
+              <div class="grid">
+                <label>Bed temp (°C)
+                  <input type="number" name="bed_temp" min="0" max="200"
+                         value="{{ data.bed_temp or '' }}" placeholder="60">
+                </label>
+                <label>Article number
+                  <input type="text" name="article_number"
+                         value="{{ data.article_number or '' }}">
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <!-- ── Spool ──────────────────────────────────────────────── -->
+          <details open>
+            <summary>Spool</summary>
+
+            <div class="grid">
+              <label>Remaining weight (g)
+                <input type="number" name="remaining_weight" min="0"
+                       value="{{ data.weight_g or '' }}" placeholder="1000">
+              </label>
+              <label>Location
+                <input type="text" name="location" placeholder="e.g. Shelf A, Bin 3">
+              </label>
+            </div>
+            <div class="grid">
+              <label>Lot number
+                <input type="text" name="lot_nr" placeholder="Optional">
+              </label>
+              <label>Comment
+                <input type="text" name="comment" placeholder="Optional">
+              </label>
+            </div>
+          </details>
+
+          <div class="form-actions">
+            <button type="submit">Add to Spoolman</button>
+            <a href="/" role="button" class="secondary outline">Start over</a>
+          </div>
+
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // ── Vendor mode toggle ───────────────────────────────────────────
+    const vmodeExisting = document.getElementById('vmode-existing');
+    const vmodeNew      = document.getElementById('vmode-new');
+    const vendorIdField = document.getElementById('vendor-id-field');
+    const vendorNameWrap  = document.getElementById('vendor-name-wrap');
+    const vendorNameInput = document.getElementById('vendor-name-input');
+
+    if (vmodeNew) {
+      vmodeNew.addEventListener('change', () => {
+        vendorNameWrap.style.display = 'block';
+        if (vendorNameInput) vendorNameInput.disabled = false;
+        if (vendorIdField)  vendorIdField.disabled  = true;
+      });
+      vmodeExisting.addEventListener('change', () => {
+        vendorNameWrap.style.display = 'none';
+        if (vendorNameInput) vendorNameInput.disabled = true;
+        if (vendorIdField)  vendorIdField.disabled  = false;
+      });
+    }
+
+    // ── Filament mode toggle ─────────────────────────────────────────
+    const fmodeExisting   = document.getElementById('fmode-existing');
+    const fmodeNew        = document.getElementById('fmode-new');
+    const filamentIdField = document.getElementById('filament-id-field');
+    const filamentWrap    = document.getElementById('filament-fields-wrap');
+
+    if (fmodeNew) {
+      fmodeNew.addEventListener('change', () => {
+        filamentWrap.style.display = 'block';
+        if (filamentIdField) filamentIdField.disabled = true;
+      });
+      fmodeExisting.addEventListener('change', () => {
+        filamentWrap.style.display = 'none';
+        if (filamentIdField) filamentIdField.disabled = false;
+      });
+    }
+
+    // ── Color picker sync ────────────────────────────────────────────
+    const colorPicker  = document.getElementById('color-picker');
+    const colorHexText = document.getElementById('color-hex-text');
+    const colorSwatch  = document.getElementById('color-swatch');
+
+    function syncColor(hex) {
+      // hex may be #RRGGBB or RRGGBB
+      const normalized = hex.startsWith('#') ? hex : '#' + hex;
+      const bare = normalized.replace('#', '');
+      colorPicker.value    = normalized;
+      colorHexText.value   = bare.toUpperCase();
+      colorSwatch.style.background = normalized;
+    }
+
+    colorPicker.addEventListener('input', () => syncColor(colorPicker.value));
+    colorHexText.addEventListener('input', () => {
+      const v = colorHexText.value.replace('#', '');
+      if (v.length === 6) syncColor('#' + v);
+    });
+  </script>
+</body>
+</html>

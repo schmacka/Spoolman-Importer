@@ -15,7 +15,7 @@ RUN mkdir -p /data
 
 ENV DATA_PATH=/data
 
-COPY addon/run.sh /run.sh
+COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
 CMD ["/run.sh"]

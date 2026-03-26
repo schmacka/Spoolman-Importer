@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Filament Analyzer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    body { padding-bottom: 3rem; }
+    header { text-align: center; padding: 2.5rem 1rem 1rem; }
+    header h1 { margin-bottom: 0.25rem; }
+    header p { color: var(--pico-muted-color); margin: 0; }
+
+    .upload-zone {
+      border: 2px dashed var(--pico-muted-border-color);
+      border-radius: var(--pico-border-radius);
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover,
+    .upload-zone.drag-over { border-color: var(--pico-primary); background: rgba(96,165,250,0.04); }
+    .upload-zone input[type="file"] { display: none; }
+    .upload-icon { font-size: 3.5rem; line-height: 1; margin-bottom: 0.75rem; }
+    #preview-img {
+      max-width: 100%; max-height: 280px;
+      border-radius: 8px; margin-top: 1.25rem;
+      display: none;
+    }
+    .actions { text-align: center; margin-top: 1.5rem; }
+    .spinner {
+      display: none;
+      align-items: center; justify-content: center; gap: 0.6rem;
+      color: var(--pico-muted-color); margin-top: 1rem;
+    }
+    .spinner.visible { display: flex; }
+  </style>
+</head>
+<body>
+  <main class="container" style="max-width: 640px">
+    <header>
+      <h1>Filament Analyzer</h1>
+      <p>Upload a photo of your filament spool — the AI will read the label and add it to Spoolman</p>
+    </header>
+
+    <form method="post" action="/analyze" enctype="multipart/form-data" id="upload-form">
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" name="file" id="file-input" accept="image/*" required>
+        <label for="file-input" style="cursor: pointer; display: block">
+          <div class="upload-icon">📷</div>
+          <p><strong>Click to select</strong> or drag &amp; drop a photo</p>
+          <small>JPG · PNG · WEBP &nbsp;—&nbsp; photo of the spool label works best</small>
+        </label>
+        <img id="preview-img" src="" alt="Selected spool photo">
+      </div>
+
+      <div class="actions">
+        <button type="submit" id="submit-btn" disabled>Analyze Spool</button>
+        <div class="spinner" id="spinner">
+          <span aria-busy="true"></span> Analyzing with AI, please wait…
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const fileInput  = document.getElementById('file-input');
+    const submitBtn  = document.getElementById('submit-btn');
+    const previewImg = document.getElementById('preview-img');
+    const uploadZone = document.getElementById('upload-zone');
+    const form       = document.getElementById('upload-form');
+    const spinner    = document.getElementById('spinner');
+
+    fileInput.addEventListener('change', function () {
+      const file = this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        previewImg.src = e.target.result;
+        previewImg.style.display = 'block';
+        submitBtn.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    form.addEventListener('submit', () => {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Analyzing…';
+      spinner.classList.add('visible');
+    });
+
+    // Drag & drop
+    uploadZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length) {
+        fileInput.files = files;
+        fileInput.dispatchEvent(new Event('change'));
+      }
+    });
+  </script>
+</body>
+</html>
