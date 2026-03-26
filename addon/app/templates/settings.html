@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Filament Analyzer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    body { padding-bottom: 3rem; }
+    header { text-align: center; padding: 2.5rem 1rem 1rem; }
+    header h1 { margin-bottom: 0.25rem; }
+    header p { color: var(--pico-muted-color); margin: 0; }
+    .actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem; }
+    .provider-fields { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <main class="container" style="max-width: 640px">
+    <header>
+      <h1>Settings</h1>
+      <p>Configure your AI provider and Spoolman connection</p>
+    </header>
+
+    {% if saved %}
+    <article style="border-left: 4px solid var(--pico-color-green-500); padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
+      ✅ Settings saved successfully.
+    </article>
+    {% endif %}
+
+    <form method="post" action="settings" id="settings-form">
+      <article>
+        <header><strong>Spoolman</strong></header>
+        <label>
+          Spoolman URL
+          <input type="text" name="spoolman_url" value="{{ cfg.spoolman_url }}" placeholder="http://localhost:7912" required>
+        </label>
+        <label>
+          Spoolman API Key <small>(optional)</small>
+          <input type="password" name="spoolman_api_key" value="{{ cfg.spoolman_api_key }}" placeholder="Leave blank if not configured">
+        </label>
+      </article>
+
+      <article>
+        <header><strong>AI Provider</strong></header>
+        <div style="display: flex; gap: 2rem; margin-bottom: 1rem;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="ai_provider" value="anthropic" id="provider-anthropic"
+              {% if ai_provider == 'anthropic' %}checked{% endif %}>
+            Anthropic
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="ai_provider" value="openrouter" id="provider-openrouter"
+              {% if ai_provider == 'openrouter' %}checked{% endif %}>
+            OpenRouter
+          </label>
+        </div>
+
+        <div id="anthropic-fields" class="provider-fields">
+          <label>
+            Anthropic API Key
+            <input type="password" name="anthropic_api_key" value="{{ cfg.anthropic_api_key }}" placeholder="sk-ant-...">
+            <small>Get a key at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a></small>
+          </label>
+        </div>
+
+        <div id="openrouter-fields" class="provider-fields">
+          <label>
+            OpenRouter API Key
+            <input type="password" name="openrouter_api_key" value="{{ cfg.openrouter_api_key }}" placeholder="sk-or-...">
+            <small>Get a key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a></small>
+          </label>
+          <label>
+            Model
+            <input type="text" name="openrouter_model" value="{{ cfg.openrouter_model }}" placeholder="anthropic/claude-haiku-4-5">
+          </label>
+        </div>
+      </article>
+
+      <div class="actions">
+        <a href="./" role="button" class="secondary">Back</a>
+        <button type="submit">Save Settings</button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const anthropicFields  = document.getElementById('anthropic-fields');
+    const openrouterFields = document.getElementById('openrouter-fields');
+
+    function updateVisibility() {
+      const provider = document.querySelector('input[name="ai_provider"]:checked').value;
+      anthropicFields.style.display  = provider === 'anthropic'   ? '' : 'none';
+      openrouterFields.style.display = provider === 'openrouter'  ? '' : 'none';
+    }
+
+    document.querySelectorAll('input[name="ai_provider"]').forEach(r =>
+      r.addEventListener('change', updateVisibility)
+    );
+    updateVisibility();
+  </script>
+</body>
+</html>

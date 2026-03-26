@@ -1,6 +1,8 @@
 import base64
+import json
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -16,6 +18,8 @@ from .spoolmandb import SpoolmanDB
 load_dotenv()
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
+_SETTINGS_FILE = DATA_DIR / "settings.json"
 
 spoolmandb = SpoolmanDB()
 
@@ -30,13 +34,23 @@ app = FastAPI(title="Filament Analyzer", lifespan=lifespan)
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
+def _load_settings() -> dict:
+    try:
+        if _SETTINGS_FILE.exists():
+            return json.loads(_SETTINGS_FILE.read_text())
+    except Exception:
+        pass
+    return {}
+
+
 def _cfg() -> dict:
+    stored = _load_settings()
     return {
-        "spoolman_url": os.getenv("SPOOLMAN_URL", "http://localhost:7912"),
-        "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY", ""),
-        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY", ""),
-        "openrouter_model": os.getenv("OPENROUTER_MODEL", "anthropic/claude-haiku-4-5"),
-        "spoolman_api_key": os.getenv("SPOOLMAN_API_KEY", ""),
+        "spoolman_url": os.getenv("SPOOLMAN_URL") or stored.get("spoolman_url", "http://localhost:7912"),
+        "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY") or stored.get("anthropic_api_key", ""),
+        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY") or stored.get("openrouter_api_key", ""),
+        "openrouter_model": os.getenv("OPENROUTER_MODEL") or stored.get("openrouter_model", "anthropic/claude-haiku-4-5"),
+        "spoolman_api_key": os.getenv("SPOOLMAN_API_KEY") or stored.get("spoolman_api_key", ""),
     }
 
 
@@ -45,7 +59,45 @@ def _cfg() -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    cfg = _cfg()
+    has_api_key = bool(cfg["anthropic_api_key"] or cfg["openrouter_api_key"])
+    return templates.TemplateResponse("index.html", {"request": request, "has_api_key": has_api_key})
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_get(request: Request):
+    cfg = _cfg()
+    ai_provider = "openrouter" if cfg["openrouter_api_key"] else "anthropic"
+    return templates.TemplateResponse(
+        "settings.html",
+        {"request": request, "cfg": cfg, "ai_provider": ai_provider, "saved": False},
+    )
+
+
+@app.post("/settings", response_class=HTMLResponse)
+async def settings_post(
+    request: Request,
+    spoolman_url: str = Form(default=""),
+    ai_provider: str = Form(default="anthropic"),
+    anthropic_api_key: str = Form(default=""),
+    openrouter_api_key: str = Form(default=""),
+    openrouter_model: str = Form(default="anthropic/claude-haiku-4-5"),
+    spoolman_api_key: str = Form(default=""),
+):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    settings = {
+        "spoolman_url": spoolman_url.strip(),
+        "anthropic_api_key": anthropic_api_key.strip() if ai_provider == "anthropic" else "",
+        "openrouter_api_key": openrouter_api_key.strip() if ai_provider == "openrouter" else "",
+        "openrouter_model": openrouter_model.strip() or "anthropic/claude-haiku-4-5",
+        "spoolman_api_key": spoolman_api_key.strip(),
+    }
+    _SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
+    cfg = _cfg()
+    return templates.TemplateResponse(
+        "settings.html",
+        {"request": request, "cfg": cfg, "ai_provider": ai_provider, "saved": True},
+    )
 
 
 @app.post("/analyze", response_class=HTMLResponse)
@@ -59,10 +111,8 @@ async def analyze(request: Request, file: UploadFile = File(...)):
                 "request": request,
                 "spool": None,
                 "spoolman_url": cfg["spoolman_url"],
-                "error": (
-                    "No AI API key is configured. "
-                    "Set an Anthropic or OpenRouter API key in the addon options."
-                ),
+                "error": "No AI API key is configured.",
+                "settings_link": True,
             },
         )
 

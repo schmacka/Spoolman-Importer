@@ -10,6 +10,7 @@
     header { text-align: center; padding: 2.5rem 1rem 1rem; }
     header h1 { margin-bottom: 0.25rem; }
     header p { color: var(--pico-muted-color); margin: 0; }
+    .settings-link { position: absolute; top: 1rem; right: 1rem; font-size: 0.85rem; }
 
     .upload-zone {
       border: 2px dashed var(--pico-muted-border-color);
@@ -38,11 +39,18 @@
   </style>
 </head>
 <body>
+  <a href="settings" class="settings-link">⚙️ Settings</a>
   <main class="container" style="max-width: 640px">
     <header>
       <h1>Filament Analyzer</h1>
       <p>Upload a photo of your filament spool — the AI will read the label and add it to Spoolman</p>
     </header>
+
+    {% if not has_api_key %}
+    <article style="border-left: 4px solid var(--pico-color-amber-500); padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
+      ⚠️ No AI API key configured. <a href="settings">Open Settings</a> to add your Anthropic or OpenRouter key.
+    </article>
+    {% endif %}
 
     <form method="post" action="analyze" enctype="multipart/form-data" id="upload-form">
       <div class="upload-zone" id="upload-zone">
