@@ -3,6 +3,7 @@ import json
 import re
 
 import anthropic
+import httpx
 
 SYSTEM_PROMPT = """You are a 3D printer filament analyzer. Given a photo of a filament spool,
 extract metadata from the label and return it as a single JSON object with these exact keys:
@@ -21,55 +22,99 @@ extract metadata from the label and return it as a single JSON object with these
 Return ONLY valid JSON. No markdown fences, no extra text."""
 
 
+def _parse_json(text: str) -> dict:
+    json_match = re.search(r"\{.*\}", text, re.DOTALL)
+    if json_match:
+        return json.loads(json_match.group())
+    return _empty_result()
+
+
+async def _analyze_anthropic(image_bytes: bytes, api_key: str, mime_type: str) -> dict:
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    image_b64 = base64.standard_b64encode(image_bytes).decode()
+    message = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        system=SYSTEM_PROMPT,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime_type,
+                            "data": image_b64,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Analyze this filament spool and return the JSON.",
+                    },
+                ],
+            }
+        ],
+    )
+    return _parse_json(message.content[0].text.strip())
+
+
+async def _analyze_openrouter(
+    image_bytes: bytes, api_key: str, model: str, mime_type: str
+) -> dict:
+    image_b64 = base64.standard_b64encode(image_bytes).decode()
+    data_url = f"data:{mime_type};base64,{image_b64}"
+    payload = {
+        "model": model,
+        "max_tokens": 512,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                    {
+                        "type": "text",
+                        "text": "Analyze this filament spool and return the JSON.",
+                    },
+                ],
+            },
+        ],
+    }
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=payload,
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+    return _parse_json(resp.json()["choices"][0]["message"]["content"].strip())
+
+
 async def analyze_image(
     image_bytes: bytes,
-    api_key: str,
     mime_type: str = "image/jpeg",
+    *,
+    anthropic_api_key: str = "",
+    openrouter_api_key: str = "",
+    openrouter_model: str = "anthropic/claude-haiku-4-5",
 ) -> dict:
-    if not api_key:
-        return _empty_result()
-
     # Normalize MIME type — browsers may send image/jpg
     if mime_type == "image/jpg":
         mime_type = "image/jpeg"
 
-    client = anthropic.AsyncAnthropic(api_key=api_key)
-    image_b64 = base64.standard_b64encode(image_bytes).decode()
-
     try:
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=512,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": mime_type,
-                                "data": image_b64,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": "Analyze this filament spool and return the JSON.",
-                        },
-                    ],
-                }
-            ],
-        )
-        text = message.content[0].text.strip()
-        # Strip any accidental markdown fences
-        json_match = re.search(r"\{.*\}", text, re.DOTALL)
-        if json_match:
-            return json.loads(json_match.group())
-        return _empty_result()
+        if openrouter_api_key:
+            return await _analyze_openrouter(
+                image_bytes, openrouter_api_key, openrouter_model, mime_type
+            )
+        if anthropic_api_key:
+            return await _analyze_anthropic(image_bytes, anthropic_api_key, mime_type)
     except Exception as exc:
-        print(f"Claude analysis error: {exc}")
-        return _empty_result()
+        print(f"AI analysis error: {exc}")
+
+    return _empty_result()
 
 
 def _empty_result() -> dict:
