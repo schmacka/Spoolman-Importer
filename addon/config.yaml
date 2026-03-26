@@ -1,6 +1,6 @@
 name: Filament Analyzer
 slug: filament_analyzer
-version: "0.1.4"
+version: "0.1.5"
 description: >
   Analyze 3D printer filament spool photos with AI and add spools to Spoolman automatically.
 url: https://github.com/schmacka/Spoolman-Importer
@@ -14,12 +14,14 @@ panel_icon: mdi:printer-3d-nozzle
 panel_title: Filament Analyzer
 options:
   spoolman_url: "http://homeassistant.local:7912"
+  ai_provider: "anthropic"
   anthropic_api_key: ""
   openrouter_api_key: ""
   openrouter_model: "anthropic/claude-haiku-4-5"
   spoolman_api_key: ""
 schema:
   spoolman_url: str
+  ai_provider: list(anthropic|openrouter)
   anthropic_api_key: str?
   openrouter_api_key: str?
   openrouter_model: str?
