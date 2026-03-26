@@ -3,11 +3,26 @@ configuration:
     name: Spoolman URL
     description: >
       URL of your Spoolman instance, e.g. http://homeassistant.local:7912
+  ai_provider:
+    name: AI Provider
+    description: >
+      Select which AI provider to use for image analysis.
+      Set the corresponding API key below.
   anthropic_api_key:
     name: Anthropic API Key
     description: >
-      Your Anthropic API key for Claude AI vision analysis.
+      API key for Anthropic (Claude). Used when AI Provider is set to "anthropic".
       Get one at https://console.anthropic.com
+  openrouter_api_key:
+    name: OpenRouter API Key
+    description: >
+      API key for OpenRouter. Used when AI Provider is set to "openrouter".
+      Get one at https://openrouter.ai/keys
+  openrouter_model:
+    name: OpenRouter Model
+    description: >
+      Model to use via OpenRouter (e.g. anthropic/claude-haiku-4-5,
+      google/gemini-flash-1.5). Only used when AI Provider is "openrouter".
   spoolman_api_key:
     name: Spoolman API Key
     description: >
