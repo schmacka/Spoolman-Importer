@@ -1,8 +1,9 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# zbar for barcode/QR scanning (Alpine-based HA images)
-RUN apk add --no-cache zbar-dev
+# python3 + pip (base images don't include Python; base-python images lack bashio)
+# zbar for barcode/QR scanning
+RUN apk add --no-cache python3 py3-pip zbar-dev
 
 WORKDIR /app
 
