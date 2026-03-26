@@ -51,6 +51,21 @@ async def index(request: Request):
 @app.post("/analyze", response_class=HTMLResponse)
 async def analyze(request: Request, file: UploadFile = File(...)):
     cfg = _cfg()
+
+    if not cfg["anthropic_api_key"] and not cfg["openrouter_api_key"]:
+        return templates.TemplateResponse(
+            "success.html",
+            {
+                "request": request,
+                "spool": None,
+                "spoolman_url": cfg["spoolman_url"],
+                "error": (
+                    "No AI API key is configured. "
+                    "Set an Anthropic or OpenRouter API key in the addon options."
+                ),
+            },
+        )
+
     image_bytes = await file.read()
     mime_type = file.content_type or "image/jpeg"
 

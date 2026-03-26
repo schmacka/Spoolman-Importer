@@ -1,6 +1,6 @@
 name: Filament Analyzer
 slug: filament_analyzer
-version: "0.1.7"
+version: "0.1.8"
 description: >
   Analyze 3D printer filament spool photos with AI and add spools to Spoolman automatically.
 url: https://github.com/schmacka/Spoolman-Importer
