@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if error %}Error{% else %}Spool Added{% endif %} — Filament Analyzer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    .center { text-align: center; padding-top: 4rem; }
+    .icon { font-size: 4rem; line-height: 1; margin-bottom: 1rem; }
+    .actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }
+    pre { text-align: left; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <main class="container" style="max-width: 560px">
+    <div class="center">
+      {% if error %}
+        <div class="icon">⚠️</div>
+        <h1>Something went wrong</h1>
+        <p>The spool could not be added to Spoolman.</p>
+        <pre><code>{{ error }}</code></pre>
+        <div class="actions">
+          <a href="javascript:history.back()" role="button" class="secondary">Go back</a>
+          <a href="/" role="button">Start over</a>
+        </div>
+      {% else %}
+        <div class="icon">✅</div>
+        <h1>Spool Added!</h1>
+        <p>
+          Spool <strong>#{{ spool.id }}</strong> has been added to Spoolman.
+        </p>
+        <div class="actions">
+          <a href="{{ spoolman_url }}" role="button" class="secondary" target="_blank" rel="noopener">
+            Open Spoolman ↗
+          </a>
+          <a href="/" role="button">Add Another</a>
+        </div>
+      {% endif %}
+    </div>
+  </main>
+</body>
+</html>

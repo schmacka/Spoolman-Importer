@@ -14,9 +14,9 @@ panel_icon: mdi:printer-3d-nozzle
 panel_title: Filament Analyzer
 options:
   spoolman_url: "http://homeassistant.local:7912"
-  anthropic_api_key: ""
-  spoolman_api_key: ""
+  anthropic_api_key: ~
+  spoolman_api_key: ~
 schema:
   spoolman_url: str
-  anthropic_api_key: str
-  spoolman_api_key: str
+  anthropic_api_key: str?
+  spoolman_api_key: str?

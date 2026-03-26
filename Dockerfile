@@ -7,10 +7,10 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY addon/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/ ./app/
+COPY addon/app/ ./app/
 
 RUN mkdir -p /data
 
