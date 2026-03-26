@@ -1,0 +1,22 @@
+name: Filament Analyzer
+slug: filament_analyzer
+version: "0.1.0"
+description: >
+  Analyze 3D printer filament spool photos with AI and add spools to Spoolman automatically.
+url: https://github.com/schmacka/Spoolman-Importer
+arch:
+  - amd64
+  - aarch64
+  - armv7
+ingress: true
+ingress_port: 8080
+panel_icon: mdi:printer-3d-nozzle
+panel_title: Filament Analyzer
+options:
+  spoolman_url: "http://homeassistant.local:7912"
+  anthropic_api_key: ""
+  spoolman_api_key: ""
+schema:
+  spoolman_url: str
+  anthropic_api_key: str
+  spoolman_api_key: str

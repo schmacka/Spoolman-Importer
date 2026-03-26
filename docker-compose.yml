@@ -1,0 +1,13 @@
+services:
+  filament-analyzer:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - filament-analyzer-data:/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  filament-analyzer-data:
