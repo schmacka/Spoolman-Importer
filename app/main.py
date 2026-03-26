@@ -34,6 +34,8 @@ def _cfg() -> dict:
     return {
         "spoolman_url": os.getenv("SPOOLMAN_URL", "http://localhost:7912"),
         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY", ""),
+        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY", ""),
+        "openrouter_model": os.getenv("OPENROUTER_MODEL", "anthropic/claude-haiku-4-5"),
         "spoolman_api_key": os.getenv("SPOOLMAN_API_KEY", ""),
     }
 
@@ -55,8 +57,14 @@ async def analyze(request: Request, file: UploadFile = File(...)):
     # 1. Barcode fast-path
     barcode = scan_barcode(image_bytes)
 
-    # 2. Claude vision analysis
-    data = await analyze_image(image_bytes, cfg["anthropic_api_key"], mime_type)
+    # 2. AI vision analysis (OpenRouter if key set, else Anthropic)
+    data = await analyze_image(
+        image_bytes,
+        mime_type,
+        anthropic_api_key=cfg["anthropic_api_key"],
+        openrouter_api_key=cfg["openrouter_api_key"],
+        openrouter_model=cfg["openrouter_model"],
+    )
 
     # 3. SpoolmanDB enrichment — fill in technical fields for known filaments
     db_match = spoolmandb.search(

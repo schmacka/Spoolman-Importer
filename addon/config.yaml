@@ -15,8 +15,12 @@ panel_title: Filament Analyzer
 options:
   spoolman_url: "http://homeassistant.local:7912"
   anthropic_api_key: ""
+  openrouter_api_key: ""
+  openrouter_model: "anthropic/claude-haiku-4-5"
   spoolman_api_key: ""
 schema:
   spoolman_url: str
   anthropic_api_key: str?
+  openrouter_api_key: str?
+  openrouter_model: str?
   spoolman_api_key: str?
