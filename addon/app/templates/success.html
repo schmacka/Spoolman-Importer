@@ -21,8 +21,11 @@
         <p>The spool could not be added to Spoolman.</p>
         <pre><code>{{ error }}</code></pre>
         <div class="actions">
+          {% if settings_link %}
+          <a href="settings" role="button">Open Settings</a>
+          {% endif %}
           <a href="javascript:history.back()" role="button" class="secondary">Go back</a>
-          <a href="./" role="button">Start over</a>
+          <a href="./" role="button" class="secondary">Start over</a>
         </div>
       {% else %}
         <div class="icon">✅</div>
