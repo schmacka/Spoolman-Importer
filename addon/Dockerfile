@@ -15,7 +15,6 @@ RUN mkdir -p /data
 
 ENV DATA_PATH=/data
 
-COPY run.sh /run.sh
-RUN chmod a+x /run.sh
-
-CMD ["/run.sh"]
+RUN mkdir -p /etc/services.d/filament_analyzer
+COPY run.sh /etc/services.d/filament_analyzer/run
+RUN chmod a+x /etc/services.d/filament_analyzer/run
