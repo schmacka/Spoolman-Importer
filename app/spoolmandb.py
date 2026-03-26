@@ -86,7 +86,7 @@ class SpoolmanDB:
                 score += 3
             if m and (m in fm or fm in m):
                 score += 2
-            if c and c in fn:
+            if c and (c in fn or fn in c):
                 score += 2
 
             if score > best_score:
