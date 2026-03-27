@@ -70,3 +70,45 @@ def test_upload_marks_failed_on_analysis_error(client):
     item = resp.json()
     assert item["status"] == "failed"
     assert "AI unavailable" in item["error"]
+
+
+def test_image_endpoint_returns_image(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    tc.post(
+        "/queue/upload",
+        files={"file": ("spool.jpg", b"fake-image-data", "image/jpeg")},
+    )
+    items = tc.get("/queue/items").json()
+    item_id = items[0]["id"]
+
+    resp = tc.get(f"/queue/{item_id}/image")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("image/")
+
+
+def test_image_endpoint_404_for_unknown(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    resp = tc.get("/queue/nonexistent/image")
+    assert resp.status_code == 404
+
+
+def test_review_page_loads_for_ready_item(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    tc.post(
+        "/queue/upload",
+        files={"file": ("spool.jpg", b"fake-image-data", "image/jpeg")},
+    )
+    items = tc.get("/queue/items").json()
+    item_id = items[0]["id"]
+
+    resp = tc.get(f"/queue/{item_id}/review")
+    assert resp.status_code == 200
+    assert b"Review" in resp.content
+    assert b"TestBrand" in resp.content
+
+
+def test_review_page_redirects_for_unknown_item(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    resp = tc.get("/queue/nonexistent/review", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["location"] == "/"

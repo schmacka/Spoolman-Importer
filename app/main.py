@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .analyzer import analyze_image
@@ -131,6 +131,52 @@ async def queue_upload(file: UploadFile = File(...)):
         item = await queue_store.update(item_id, status="failed", error=str(exc))
 
     return JSONResponse(item)
+
+
+@app.get("/queue/{item_id}/image")
+async def queue_image(item_id: str):
+    item = await queue_store.get(item_id)
+    if not item or not os.path.exists(item["image_path"]):
+        raise HTTPException(status_code=404)
+    return FileResponse(item["image_path"], media_type="image/jpeg")
+
+
+@app.get("/queue/{item_id}/review", response_class=HTMLResponse)
+async def queue_review(request: Request, item_id: str):
+    item = await queue_store.get(item_id)
+    if not item or item["status"] not in ("ready", "failed"):
+        return RedirectResponse("/", status_code=302)
+
+    cfg = _cfg()
+    data = item.get("data") or {}
+    spoolman_client = SpoolmanClient(cfg["spoolman_url"], cfg["spoolman_api_key"])
+    existing_vendors = await spoolman_client.find_vendor(data.get("vendor") or "")
+    existing_filaments: list[dict] = []
+    if existing_vendors:
+        existing_filaments = await spoolman_client.find_filament(
+            existing_vendors[0]["id"],
+            data.get("material") or "",
+            data.get("color_name") or "",
+        )
+
+    with open(item["image_path"], "rb") as f:
+        image_b64 = base64.b64encode(f.read()).decode()
+
+    return templates.TemplateResponse(
+        "review.html",
+        {
+            "request": request,
+            "item_id": item_id,
+            "data": data,
+            "barcode": item.get("barcode"),
+            "db_match": item.get("db_match"),
+            "existing_vendors": existing_vendors,
+            "existing_filaments": existing_filaments,
+            "image_b64": image_b64,
+            "image_mime": "image/jpeg",
+            "error": None,
+        },
+    )
 
 
 @app.post("/analyze", response_class=HTMLResponse)
