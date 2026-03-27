@@ -80,6 +80,7 @@ async def queue_upload(file: UploadFile = File(...)):
         "status": "analyzing",
         "filename": file.filename or "unknown.jpg",
         "image_path": image_path,
+        "mime_type": mime_type,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "data": {},
         "barcode": None,
@@ -302,16 +303,15 @@ async def queue_retry(item_id: str):
         raise HTTPException(status_code=404)
 
     cfg = _cfg()
-    with open(item["image_path"], "rb") as f:
-        image_bytes = f.read()
-
     await queue_store.update(item_id, status="analyzing", error=None, data={})
 
     try:
+        with open(item["image_path"], "rb") as f:
+            image_bytes = f.read()
         barcode = scan_barcode(image_bytes)
         data = await analyze_image(
             image_bytes,
-            "image/jpeg",
+            item.get("mime_type") or "image/jpeg",
             anthropic_api_key=cfg["anthropic_api_key"],
             openrouter_api_key=cfg["openrouter_api_key"],
             openrouter_model=cfg["openrouter_model"],
