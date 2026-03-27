@@ -194,7 +194,6 @@ async def queue_create(
     weight: Optional[str] = Form(default=None),
     spool_weight: Optional[str] = Form(default=None),
     temp_min: Optional[str] = Form(default=None),
-    temp_max: Optional[str] = Form(default=None),
     bed_temp: Optional[str] = Form(default=None),
     article_number: Optional[str] = Form(default=None),
     remaining_weight: Optional[str] = Form(default=None),
@@ -211,14 +210,18 @@ async def queue_create(
 
     async def _render_error(exc: Exception) -> HTMLResponse:
         data = item.get("data") or {}
-        existing_vendors = await spoolman.find_vendor(data.get("vendor") or "")
-        existing_filaments: list[dict] = []
-        if existing_vendors:
-            existing_filaments = await spoolman.find_filament(
-                existing_vendors[0]["id"],
-                data.get("material") or "",
-                data.get("color_name") or "",
-            )
+        try:
+            existing_vendors = await spoolman.find_vendor(data.get("vendor") or "")
+            existing_filaments: list[dict] = []
+            if existing_vendors:
+                existing_filaments = await spoolman.find_filament(
+                    existing_vendors[0]["id"],
+                    data.get("material") or "",
+                    data.get("color_name") or "",
+                )
+        except Exception:
+            existing_vendors = []
+            existing_filaments = []
         with open(item["image_path"], "rb") as f:
             image_b64 = base64.b64encode(f.read()).decode()
         return templates.TemplateResponse(
