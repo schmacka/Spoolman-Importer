@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 
@@ -9,9 +11,8 @@ def test_queue_items_empty(client):
 
 
 def test_queue_items_returns_items(client):
-    import asyncio
     tc, queue_store, mock_analyze, mock_spoolman = client
-    asyncio.get_event_loop().run_until_complete(
+    asyncio.run(
         queue_store.add({"id": "abc", "status": "ready", "filename": "a.jpg"})
     )
     resp = tc.get("/queue/items")
