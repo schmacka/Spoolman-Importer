@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 import pytest
 
@@ -37,7 +38,6 @@ def test_upload_returns_ready_item(client):
 
 
 def test_upload_saves_image_to_disk(client):
-    import os
     tc, queue_store, mock_analyze, mock_spoolman = client
     resp = tc.post(
         "/queue/upload",
