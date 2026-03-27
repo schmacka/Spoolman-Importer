@@ -102,8 +102,8 @@
       <input type="file" name="file" id="file-input" accept="image/*" multiple>
       <label for="file-input" style="cursor: pointer; display: block">
         <div class="upload-icon">📷</div>
-        <p><strong>Click to select</strong> or drag &amp; drop photos</p>
-        <small>Select multiple files — each spool is analyzed automatically</small>
+        <p><strong>Tap or click to add a photo</strong> — or drag &amp; drop</p>
+        <small>Desktop: select multiple files at once &nbsp;·&nbsp; Mobile: tap once per spool</small>
       </label>
     </div>
 
@@ -229,7 +229,11 @@
       }
     }
 
-    fileInput.addEventListener('change', () => processFiles(fileInput.files));
+    fileInput.addEventListener('change', () => {
+      const files = fileInput.files;
+      fileInput.value = '';   // reset so the same file can be re-selected / next tap opens picker
+      processFiles(files);
+    });
 
     uploadZone.addEventListener('dragover', e => {
       e.preventDefault();
