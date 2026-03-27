@@ -61,6 +61,75 @@ async def queue_items():
     return await queue_store.all()
 
 
+@app.post("/queue/upload")
+async def queue_upload(file: UploadFile = File(...)):
+    cfg = _cfg()
+    image_bytes = await file.read()
+    mime_type = file.content_type or "image/jpeg"
+    item_id = str(uuid.uuid4())
+    image_path = queue_store.image_path(item_id)
+
+    with open(image_path, "wb") as f:
+        f.write(image_bytes)
+
+    item: dict = {
+        "id": item_id,
+        "status": "analyzing",
+        "filename": file.filename or "unknown.jpg",
+        "image_path": image_path,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "data": {},
+        "barcode": None,
+        "db_match": None,
+        "error": None,
+    }
+    await queue_store.add(item)
+
+    try:
+        barcode = scan_barcode(image_bytes)
+        data = await analyze_image(
+            image_bytes,
+            mime_type,
+            anthropic_api_key=cfg["anthropic_api_key"],
+            openrouter_api_key=cfg["openrouter_api_key"],
+            openrouter_model=cfg["openrouter_model"],
+        )
+        db_match = spoolmandb.search(
+            data.get("vendor"),
+            data.get("material"),
+            data.get("color_name"),
+        )
+        if db_match:
+            for db_key, data_key in [
+                ("density", "density"),
+                ("diameter", "diameter_mm"),
+                ("spool_weight", "spool_weight"),
+                ("temp_min", "temp_min"),
+                ("temp_max", "temp_max"),
+                ("bed_temp", "bed_temp"),
+            ]:
+                if db_match.get(db_key) is not None and data.get(data_key) is None:
+                    data[data_key] = db_match[db_key]
+            if db_match.get("color_hex") and not data.get("color_hex"):
+                data["color_hex"] = db_match["color_hex"]
+            if db_match.get("article_number") and not data.get("article_number"):
+                data["article_number"] = db_match["article_number"]
+            if db_match.get("weight") and not data.get("weight_g"):
+                data["weight_g"] = db_match["weight"]
+
+        item = await queue_store.update(
+            item_id,
+            status="ready",
+            data=data,
+            barcode=barcode,
+            db_match=db_match,
+        )
+    except Exception as exc:
+        item = await queue_store.update(item_id, status="failed", error=str(exc))
+
+    return JSONResponse(item)
+
+
 @app.post("/analyze", response_class=HTMLResponse)
 async def analyze(request: Request, file: UploadFile = File(...)):
     cfg = _cfg()
