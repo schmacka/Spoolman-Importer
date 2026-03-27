@@ -12,16 +12,22 @@ from .analyzer import analyze_image
 from .barcode import scan_barcode
 from .spoolman import SpoolmanClient
 from .spoolmandb import SpoolmanDB
+from .queue_store import QueueStore
 
 load_dotenv()
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 spoolmandb = SpoolmanDB()
+queue_store: QueueStore  # initialized in lifespan
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global queue_store
+    data_path = os.getenv("DATA_PATH", "/data")
+    queue_store = QueueStore(data_path)
+    await queue_store.cleanup_stuck()
     await spoolmandb.refresh()
     yield
 
@@ -46,6 +52,11 @@ def _cfg() -> dict:
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/queue/items")
+async def queue_items():
+    return await queue_store.all()
 
 
 @app.post("/analyze", response_class=HTMLResponse)
