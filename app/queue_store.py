@@ -18,12 +18,17 @@ class QueueStore:
     async def _load(self) -> list[dict]:
         if not os.path.exists(self._queue_file):
             return []
-        with open(self._queue_file) as f:
-            return json.load(f)
+        try:
+            with open(self._queue_file) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, ValueError):
+            return []
 
     async def _save(self, items: list[dict]) -> None:
-        with open(self._queue_file, "w") as f:
+        tmp = self._queue_file + ".tmp"
+        with open(tmp, "w") as f:
             json.dump(items, f, indent=2)
+        os.replace(tmp, self._queue_file)
 
     async def all(self) -> list[dict]:
         async with self._lock:
