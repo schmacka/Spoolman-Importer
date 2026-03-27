@@ -37,7 +37,7 @@ class QueueStore:
     async def get(self, item_id: str) -> Optional[dict]:
         async with self._lock:
             items = await self._load()
-        return next((i for i in items if i["id"] == item_id), None)
+            return next((i for i in items if i["id"] == item_id), None)
 
     async def add(self, item: dict) -> None:
         async with self._lock:

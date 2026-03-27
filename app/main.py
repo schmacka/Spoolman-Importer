@@ -55,7 +55,9 @@ def _cfg() -> dict:
 async def index(request: Request):
     items = await queue_store.all()
     return templates.TemplateResponse(
-        "index.html", {"request": request, "items": items}
+        request,
+        "index.html",
+        {"items": items}
     )
 
 
@@ -160,13 +162,16 @@ async def queue_review(request: Request, item_id: str):
             data.get("color_name") or "",
         )
 
-    with open(item["image_path"], "rb") as f:
-        image_b64 = base64.b64encode(f.read()).decode()
+    try:
+        with open(item["image_path"], "rb") as f:
+            image_b64 = base64.b64encode(f.read()).decode()
+    except OSError:
+        image_b64 = ""
 
     return templates.TemplateResponse(
+        request,
         "review.html",
         {
-            "request": request,
             "item_id": item_id,
             "data": data,
             "barcode": item.get("barcode"),
@@ -223,12 +228,15 @@ async def queue_create(
         except Exception:
             existing_vendors = []
             existing_filaments = []
-        with open(item["image_path"], "rb") as f:
-            image_b64 = base64.b64encode(f.read()).decode()
+        try:
+            with open(item["image_path"], "rb") as f:
+                image_b64 = base64.b64encode(f.read()).decode()
+        except OSError:
+            image_b64 = ""
         return templates.TemplateResponse(
+            request,
             "review.html",
             {
-                "request": request,
                 "item_id": item_id,
                 "data": data,
                 "barcode": item.get("barcode"),
