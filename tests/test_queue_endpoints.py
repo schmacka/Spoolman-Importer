@@ -112,3 +112,47 @@ def test_review_page_redirects_for_unknown_item(client):
     resp = tc.get("/queue/nonexistent/review", follow_redirects=False)
     assert resp.status_code == 302
     assert resp.headers["location"] == "/"
+
+
+def test_create_spool_marks_done_and_redirects(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    tc.post(
+        "/queue/upload",
+        files={"file": ("spool.jpg", b"fake-image-data", "image/jpeg")},
+    )
+    items = tc.get("/queue/items").json()
+    item_id = items[0]["id"]
+
+    resp = tc.post(
+        f"/queue/{item_id}/create",
+        data={"vendor_name": "TestBrand", "material": "PLA"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/?created={item_id}"
+
+    stored = asyncio.run(queue_store.get(item_id))
+    assert stored["status"] == "done"
+
+
+def test_create_spool_keeps_ready_on_spoolman_error(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    mock_spoolman.create_spool.side_effect = RuntimeError("Spoolman down")
+
+    tc.post(
+        "/queue/upload",
+        files={"file": ("spool.jpg", b"fake-image-data", "image/jpeg")},
+    )
+    items = tc.get("/queue/items").json()
+    item_id = items[0]["id"]
+
+    resp = tc.post(
+        f"/queue/{item_id}/create",
+        data={"vendor_name": "TestBrand", "material": "PLA"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 200
+    assert b"Spoolman down" in resp.content
+
+    stored = asyncio.run(queue_store.get(item_id))
+    assert stored["status"] == "ready"
