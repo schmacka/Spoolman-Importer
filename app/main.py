@@ -295,6 +295,69 @@ async def queue_create(
         return await _render_error(exc)
 
 
+@app.post("/queue/{item_id}/retry")
+async def queue_retry(item_id: str):
+    item = await queue_store.get(item_id)
+    if not item:
+        raise HTTPException(status_code=404)
+
+    cfg = _cfg()
+    with open(item["image_path"], "rb") as f:
+        image_bytes = f.read()
+
+    await queue_store.update(item_id, status="analyzing", error=None, data={})
+
+    try:
+        barcode = scan_barcode(image_bytes)
+        data = await analyze_image(
+            image_bytes,
+            "image/jpeg",
+            anthropic_api_key=cfg["anthropic_api_key"],
+            openrouter_api_key=cfg["openrouter_api_key"],
+            openrouter_model=cfg["openrouter_model"],
+        )
+        db_match = spoolmandb.search(
+            data.get("vendor"),
+            data.get("material"),
+            data.get("color_name"),
+        )
+        if db_match:
+            for db_key, data_key in [
+                ("density", "density"),
+                ("diameter", "diameter_mm"),
+                ("spool_weight", "spool_weight"),
+                ("temp_min", "temp_min"),
+                ("temp_max", "temp_max"),
+                ("bed_temp", "bed_temp"),
+            ]:
+                if db_match.get(db_key) is not None and data.get(data_key) is None:
+                    data[data_key] = db_match[db_key]
+            if db_match.get("color_hex") and not data.get("color_hex"):
+                data["color_hex"] = db_match["color_hex"]
+            if db_match.get("article_number") and not data.get("article_number"):
+                data["article_number"] = db_match["article_number"]
+            if db_match.get("weight") and not data.get("weight_g"):
+                data["weight_g"] = db_match["weight"]
+
+        item = await queue_store.update(
+            item_id, status="ready", data=data, barcode=barcode, db_match=db_match
+        )
+    except Exception as exc:
+        item = await queue_store.update(item_id, status="failed", error=str(exc))
+
+    return JSONResponse(item)
+
+
+@app.delete("/queue/{item_id}")
+async def queue_delete(item_id: str):
+    item = await queue_store.remove(item_id)
+    if not item:
+        raise HTTPException(status_code=404)
+    if os.path.exists(item.get("image_path", "")):
+        os.remove(item["image_path"])
+    return {"ok": True}
+
+
 @app.post("/analyze", response_class=HTMLResponse)
 async def analyze(request: Request, file: UploadFile = File(...)):
     cfg = _cfg()

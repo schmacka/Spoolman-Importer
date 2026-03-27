@@ -156,3 +156,49 @@ def test_create_spool_keeps_ready_on_spoolman_error(client):
 
     stored = asyncio.run(queue_store.get(item_id))
     assert stored["status"] == "ready"
+
+
+def test_retry_failed_item_returns_ready(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    tc.post(
+        "/queue/upload",
+        files={"file": ("spool.jpg", b"fake-image-data", "image/jpeg")},
+    )
+    items = tc.get("/queue/items").json()
+    item_id = items[0]["id"]
+
+    asyncio.run(queue_store.update(item_id, status="failed", error="old error"))
+
+    resp = tc.post(f"/queue/{item_id}/retry")
+    assert resp.status_code == 200
+    item = resp.json()
+    assert item["status"] == "ready"
+    assert item["error"] is None
+
+
+def test_retry_nonexistent_returns_404(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    resp = tc.post("/queue/nonexistent/retry")
+    assert resp.status_code == 404
+
+
+def test_delete_removes_item(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    tc.post(
+        "/queue/upload",
+        files={"file": ("spool.jpg", b"fake-image-data", "image/jpeg")},
+    )
+    items = tc.get("/queue/items").json()
+    item_id = items[0]["id"]
+
+    resp = tc.delete(f"/queue/{item_id}")
+    assert resp.status_code == 200
+
+    stored = asyncio.run(queue_store.get(item_id))
+    assert stored is None
+
+
+def test_delete_nonexistent_returns_404(client):
+    tc, queue_store, mock_analyze, mock_spoolman = client
+    resp = tc.delete("/queue/nonexistent")
+    assert resp.status_code == 404
