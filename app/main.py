@@ -53,7 +53,10 @@ def _cfg() -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    items = await queue_store.all()
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "items": items}
+    )
 
 
 @app.get("/queue/items")
