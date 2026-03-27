@@ -249,9 +249,19 @@
       card.querySelector('.status-badge').textContent = 'Analyzing…';
       btn.remove();
 
-      const resp = await fetch(`/queue/${itemId}/retry`, { method: 'POST' });
-      const item = await resp.json();
-      updateCard(card, item);
+      try {
+        const resp = await fetch(`/queue/${itemId}/retry`, { method: 'POST' });
+        const item = await resp.json();
+        updateCard(card, item);
+      } catch (e) {
+        card.querySelector('.status-badge').className = 'status-badge status-failed';
+        card.querySelector('.status-badge').textContent = 'Failed ✗';
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'retry-btn secondary outline';
+        retryBtn.textContent = 'Retry';
+        retryBtn.onclick = () => retryItem(itemId, retryBtn);
+        card.querySelector('.card-body').appendChild(retryBtn);
+      }
     }
   </script>
 </body>
