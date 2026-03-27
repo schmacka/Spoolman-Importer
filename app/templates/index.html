@@ -14,7 +14,7 @@
     .upload-zone {
       border: 2px dashed var(--pico-muted-border-color);
       border-radius: var(--pico-border-radius);
-      padding: 3rem 2rem;
+      padding: 2rem;
       text-align: center;
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
@@ -22,75 +22,215 @@
     .upload-zone:hover,
     .upload-zone.drag-over { border-color: var(--pico-primary); background: rgba(96,165,250,0.04); }
     .upload-zone input[type="file"] { display: none; }
-    .upload-icon { font-size: 3.5rem; line-height: 1; margin-bottom: 0.75rem; }
-    #preview-img {
-      max-width: 100%; max-height: 280px;
-      border-radius: 8px; margin-top: 1.25rem;
-      display: none;
+    .upload-icon { font-size: 3rem; line-height: 1; margin-bottom: 0.5rem; }
+
+    .queue-section { margin-top: 2.5rem; }
+    .queue-section h2 { margin-bottom: 1rem; }
+
+    .queue-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
     }
-    .actions { text-align: center; margin-top: 1.5rem; }
-    .spinner {
-      display: none;
-      align-items: center; justify-content: center; gap: 0.6rem;
-      color: var(--pico-muted-color); margin-top: 1rem;
+
+    .spool-card {
+      border: 1px solid var(--pico-muted-border-color);
+      border-radius: var(--pico-border-radius);
+      overflow: hidden;
+      background: var(--pico-card-background-color);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: border-color 0.15s;
     }
-    .spinner.visible { display: flex; }
+    a.spool-card:hover { border-color: var(--pico-primary); }
+
+    .spool-card img {
+      width: 100%; height: 140px;
+      object-fit: cover; display: block;
+      background: var(--pico-muted-border-color);
+    }
+    .spool-card .card-placeholder {
+      width: 100%; height: 140px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--pico-muted-border-color);
+      font-size: 2rem;
+    }
+    .card-body { padding: 0.6rem 0.75rem; }
+    .card-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-sub { font-size: 0.78rem; color: var(--pico-muted-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .status-badge {
+      display: inline-block; font-size: 0.72rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 999px; margin-top: 0.4rem;
+    }
+    .status-analyzing { background: rgba(250,204,21,0.15); color: #fcd34d; border: 1px solid #ca8a04; }
+    .status-ready     { background: rgba(96,165,250,0.15); color: #93c5fd; border: 1px solid #3b82f6; }
+    .status-done      { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid #16a34a; }
+    .status-failed    { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid #dc2626; }
+
+    .retry-btn {
+      font-size: 0.72rem; padding: 0.2rem 0.5rem;
+      margin-top: 0.3rem; display: inline-block;
+    }
+    .error-text { font-size: 0.72rem; color: var(--pico-muted-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .success-banner {
+      display: none;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid #16a34a;
+      border-radius: var(--pico-border-radius);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      color: #86efac;
+    }
+    .success-banner.visible { display: block; }
   </style>
 </head>
 <body>
-  <main class="container" style="max-width: 640px">
+  <main class="container" style="max-width: 860px">
     <header>
       <h1>Filament Analyzer</h1>
-      <p>Upload a photo of your filament spool — the AI will read the label and add it to Spoolman</p>
+      <p>Drop spool photos below — the AI reads the label and adds them to Spoolman</p>
     </header>
 
-    <form method="post" action="/analyze" enctype="multipart/form-data" id="upload-form">
-      <div class="upload-zone" id="upload-zone">
-        <input type="file" name="file" id="file-input" accept="image/*" required>
-        <label for="file-input" style="cursor: pointer; display: block">
-          <div class="upload-icon">📷</div>
-          <p><strong>Click to select</strong> or drag &amp; drop a photo</p>
-          <small>JPG · PNG · WEBP &nbsp;—&nbsp; photo of the spool label works best</small>
-        </label>
-        <img id="preview-img" src="" alt="Selected spool photo">
-      </div>
+    <div class="success-banner" id="success-banner">
+      ✅ Spool added to Spoolman successfully.
+    </div>
 
-      <div class="actions">
-        <button type="submit" id="submit-btn" disabled>Analyze Spool</button>
-        <div class="spinner" id="spinner">
-          <span aria-busy="true"></span> Analyzing with AI, please wait…
-        </div>
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" name="file" id="file-input" accept="image/*" multiple>
+      <label for="file-input" style="cursor: pointer; display: block">
+        <div class="upload-icon">📷</div>
+        <p><strong>Click to select</strong> or drag &amp; drop photos</p>
+        <small>Select multiple files — each spool is analyzed automatically</small>
+      </label>
+    </div>
+
+    <div class="queue-section">
+      <h2>Queue</h2>
+      <div class="queue-grid" id="queue-grid">
+        {% for item in items %}
+          {% if item.status == 'ready' %}
+            <a class="spool-card" href="/queue/{{ item.id }}/review">
+          {% else %}
+            <div class="spool-card" data-id="{{ item.id }}">
+          {% endif %}
+            {% if item.status == 'analyzing' %}
+              <div class="card-placeholder" aria-busy="true"></div>
+            {% else %}
+              <img src="/queue/{{ item.id }}/image" alt="{{ item.filename }}" loading="lazy">
+            {% endif %}
+            <div class="card-body">
+              <div class="card-title">
+                {{ (item.data.vendor or '') }}
+                {{ (' ' + item.data.material) if item.data.material else '' }}
+              </div>
+              <div class="card-sub">{{ item.data.color_name or item.filename }}</div>
+              {% if item.status == 'analyzing' %}
+                <span class="status-badge status-analyzing">Analyzing…</span>
+              {% elif item.status == 'ready' %}
+                <span class="status-badge status-ready">Ready →</span>
+              {% elif item.status == 'done' %}
+                <span class="status-badge status-done">Done ✓</span>
+              {% elif item.status == 'failed' %}
+                <span class="status-badge status-failed">Failed ✗</span>
+                <div class="error-text">{{ item.error or '' }}</div>
+                <button class="retry-btn secondary outline"
+                        onclick="retryItem('{{ item.id }}', this)">Retry</button>
+              {% endif %}
+            </div>
+          {% if item.status == 'ready' %}
+            </a>
+          {% else %}
+            </div>
+          {% endif %}
+        {% endfor %}
       </div>
-    </form>
+    </div>
   </main>
 
   <script>
+    // ── Success banner ───────────────────────────────────────────────────────
+    const params = new URLSearchParams(location.search);
+    if (params.get('created')) {
+      document.getElementById('success-banner').classList.add('visible');
+      history.replaceState({}, '', '/');
+    }
+
+    // ── Upload handling ──────────────────────────────────────────────────────
     const fileInput  = document.getElementById('file-input');
-    const submitBtn  = document.getElementById('submit-btn');
-    const previewImg = document.getElementById('preview-img');
     const uploadZone = document.getElementById('upload-zone');
-    const form       = document.getElementById('upload-form');
-    const spinner    = document.getElementById('spinner');
+    const queueGrid  = document.getElementById('queue-grid');
 
-    fileInput.addEventListener('change', function () {
-      const file = this.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        previewImg.src = e.target.result;
-        previewImg.style.display = 'block';
-        submitBtn.disabled = false;
-      };
-      reader.readAsDataURL(file);
-    });
+    function makeCard(tempId, filename) {
+      const div = document.createElement('div');
+      div.className = 'spool-card';
+      div.dataset.tempId = tempId;
+      div.innerHTML = `
+        <div class="card-placeholder" aria-busy="true"></div>
+        <div class="card-body">
+          <div class="card-title">${filename}</div>
+          <div class="card-sub"></div>
+          <span class="status-badge status-analyzing">Analyzing…</span>
+        </div>`;
+      return div;
+    }
 
-    form.addEventListener('submit', () => {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Analyzing…';
-      spinner.classList.add('visible');
-    });
+    function updateCard(card, item) {
+      if (item.status === 'ready') {
+        const a = document.createElement('a');
+        a.className = 'spool-card';
+        a.href = `/queue/${item.id}/review`;
+        a.innerHTML = `
+          <img src="/queue/${item.id}/image" alt="${item.filename}" loading="lazy">
+          <div class="card-body">
+            <div class="card-title">${(item.data.vendor || '')} ${item.data.material || ''}</div>
+            <div class="card-sub">${item.data.color_name || item.filename}</div>
+            <span class="status-badge status-ready">Ready →</span>
+          </div>`;
+        card.replaceWith(a);
+      } else {
+        card.innerHTML = `
+          <img src="/queue/${item.id}/image" alt="${item.filename}" loading="lazy">
+          <div class="card-body">
+            <div class="card-title">${item.filename}</div>
+            <div class="card-sub"></div>
+            <span class="status-badge status-failed">Failed ✗</span>
+            <div class="error-text">${item.error || ''}</div>
+            <button class="retry-btn secondary outline"
+                    onclick="retryItem('${item.id}', this)">Retry</button>
+          </div>`;
+        card.dataset.id = item.id;
+      }
+    }
 
-    // Drag & drop
+    async function uploadFile(file) {
+      const tempId = 'tmp-' + Date.now() + '-' + Math.random();
+      const card = makeCard(tempId, file.name);
+      queueGrid.prepend(card);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const resp = await fetch('/queue/upload', { method: 'POST', body: formData });
+        const item = await resp.json();
+        updateCard(card, item);
+      } catch (e) {
+        card.querySelector('.status-analyzing').className = 'status-badge status-failed';
+        card.querySelector('.status-badge').textContent = 'Failed ✗';
+      }
+    }
+
+    async function processFiles(files) {
+      for (const file of Array.from(files)) {
+        await uploadFile(file);
+      }
+    }
+
+    fileInput.addEventListener('change', () => processFiles(fileInput.files));
+
     uploadZone.addEventListener('dragover', e => {
       e.preventDefault();
       uploadZone.classList.add('drag-over');
@@ -99,12 +239,30 @@
     uploadZone.addEventListener('drop', e => {
       e.preventDefault();
       uploadZone.classList.remove('drag-over');
-      const files = e.dataTransfer.files;
-      if (files.length) {
-        fileInput.files = files;
-        fileInput.dispatchEvent(new Event('change'));
-      }
+      processFiles(e.dataTransfer.files);
     });
+
+    // ── Retry ────────────────────────────────────────────────────────────────
+    async function retryItem(itemId, btn) {
+      const card = btn.closest('.spool-card');
+      card.querySelector('.status-badge').className = 'status-badge status-analyzing';
+      card.querySelector('.status-badge').textContent = 'Analyzing…';
+      btn.remove();
+
+      try {
+        const resp = await fetch(`/queue/${itemId}/retry`, { method: 'POST' });
+        const item = await resp.json();
+        updateCard(card, item);
+      } catch (e) {
+        card.querySelector('.status-badge').className = 'status-badge status-failed';
+        card.querySelector('.status-badge').textContent = 'Failed ✗';
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'retry-btn secondary outline';
+        retryBtn.textContent = 'Retry';
+        retryBtn.onclick = () => retryItem(itemId, retryBtn);
+        card.querySelector('.card-body').appendChild(retryBtn);
+      }
+    }
   </script>
 </body>
 </html>
