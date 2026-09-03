@@ -19,9 +19,22 @@
 Add `https://github.com/schmacka/homeassistant-addons` as an add-on repository
 in Home Assistant, then install **Filament Analyzer**.
 
-No pre-built container image is published for this add-on, so Home Assistant
-builds it locally the first time you install it. Expect the first install to
-take several minutes.
+No pre-built container image is published for this add-on yet, so Home
+Assistant builds it locally the first time you install it. Expect the first
+install to take several minutes.
+
+## Supported architectures
+
+The add-on supports `amd64` and `aarch64` only.
+
+32-bit ARM (`armv7`) is not supported. The add-on runs on Alpine, and four of
+its dependencies — `jiter` (pulled in by `anthropic`), `uvloop`, `httptools`
+and `watchfiles` (pulled in by `uvicorn[standard]`) — publish no musl wheels
+for that architecture. Installing them would mean compiling C and Rust
+extensions on the device, which is slow at best and usually fails outright.
+
+If you run Home Assistant on a Raspberry Pi 3 or newer, use the 64-bit
+Home Assistant OS image; it reports as `aarch64` and is supported.
 
 ## Configuration
 

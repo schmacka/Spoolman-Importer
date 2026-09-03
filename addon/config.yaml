@@ -7,7 +7,6 @@ url: https://github.com/schmacka/Spoolman-Importer
 arch:
   - amd64
   - aarch64
-  - armv7
 ingress: true
 ingress_port: 8080
 init: false

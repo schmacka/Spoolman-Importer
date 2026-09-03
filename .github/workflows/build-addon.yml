@@ -1,0 +1,55 @@
+name: Build add-on image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "addon/**"
+      - ".github/workflows/build-addon.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - aarch64
+          - amd64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read add-on version
+        id: addon
+        run: |
+          version=$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' addon/config.yaml)
+          if [ -z "$version" ]; then
+            echo "Could not read version from addon/config.yaml" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Add-on version: $version"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push add-on image
+        uses: home-assistant/builder@master
+        with:
+          args: |
+            --${{ matrix.arch }} \
+            --target /data/addon \
+            --image spoolman-importer-{arch} \
+            --docker-hub ghcr.io/${{ github.repository_owner }} \
+            --addon
