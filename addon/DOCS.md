@@ -19,9 +19,10 @@
 Add `https://github.com/schmacka/homeassistant-addons` as an add-on repository
 in Home Assistant, then install **Filament Analyzer**.
 
-No pre-built container image is published for this add-on yet, so Home
-Assistant builds it locally the first time you install it. Expect the first
-install to take several minutes.
+Home Assistant pulls a pre-built image from
+`ghcr.io/schmacka/spoolman-importer-{arch}`, published from this repository by
+the `Build add-on image` workflow on every change under `addon/`. Installing
+takes seconds; nothing is compiled on the device.
 
 ## Supported architectures
 

@@ -18,8 +18,9 @@ public SpoolmanDB catalogue.
    [DOCS.md](DOCS.md)).
 4. Start the add-on and open it from the sidebar.
 
-The add-on has no pre-built image yet; Home Assistant builds it locally on
-first install, which can take a few minutes.
+Home Assistant pulls a pre-built image from
+`ghcr.io/schmacka/spoolman-importer-{arch}`, so installing takes seconds and
+needs no build on the device.
 
 Supported architectures: `amd64` and `aarch64`. See
 [DOCS.md](DOCS.md#supported-architectures) for why 32-bit ARM is not
